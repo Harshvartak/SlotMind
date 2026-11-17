@@ -35,7 +35,7 @@ cd frontend && npm install && npm run dev     # :5173, proxies /api -> :8080
 | Key (env) | Values | Default |
 |---|---|---|
 | `slotmind.scheduling.strategy` (`SCHEDULING_STRATEGY`) | `rule`, `ai` | `rule` |
-| `slotmind.llm.provider` (`LLM_PROVIDER`) | `mock`, `gemini`, `groq`, `ollama` | `mock` |
+| `slotmind.llm.provider` (`LLM_PROVIDER`) | `mock`, `gemini` | `mock` |
 | `LLM_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_TIMEOUT_MS` | provider specific | empty |
 
 Never commit API keys; use `.env`.

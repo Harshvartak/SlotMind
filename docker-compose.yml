@@ -17,6 +17,8 @@ services:
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_PRODUCT: ${LLM_PRODUCT:-}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-8000}
       CORS_ORIGINS: http://localhost:3000
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8080/actuator/health || exit 1"]
