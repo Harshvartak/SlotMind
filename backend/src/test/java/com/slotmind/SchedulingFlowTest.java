@@ -33,7 +33,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.web.server.ResponseStatusException;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:${random.uuid}")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class SchedulingFlowTest {
   private static final String OFFLINE_PROVIDER = "PRV-001";

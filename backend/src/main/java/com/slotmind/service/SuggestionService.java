@@ -2,6 +2,7 @@ package com.slotmind.service;
 
 import com.slotmind.domain.Appointment;
 import com.slotmind.domain.AppointmentStatus;
+import com.slotmind.domain.ProviderStatus;
 import com.slotmind.domain.RescheduleSuggestion;
 import com.slotmind.domain.Slot;
 import com.slotmind.domain.SlotStatus;
@@ -117,6 +118,10 @@ public class SuggestionService {
             .orElseThrow(() -> Errors.conflict("Recommended slot no longer exists"));
     if (target.getStatus() != SlotStatus.OPEN) {
       throw Errors.conflict("Slot " + target.getId() + " is no longer open");
+    }
+    if (target.getProvider().getStatus() == ProviderStatus.OFFLINE) {
+      throw Errors.conflict(
+          target.getProvider().getName() + " went offline; request a new suggestion");
     }
     Slot old = appt.getSlot();
     if (old.getStatus() == SlotStatus.BOOKED) {
