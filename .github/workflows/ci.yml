@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   backend:
-    name: Backend (format check + tests)
+    name: Backend (format check + tests + coverage)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -32,8 +32,16 @@ jobs:
           cache: maven
 
       # Spotless (google-java-format) runs first, in the validate phase, then all tests.
+      # JaCoCo records coverage during the tests and writes target/site/jacoco at verify.
       - name: Verify
         run: mvn -B verify
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/target/site/jacoco
+          retention-days: 14
 
       - name: Upload test reports
         if: failure()
@@ -44,7 +52,7 @@ jobs:
           if-no-files-found: ignore
 
   frontend:
-    name: Frontend (tests + build)
+    name: Frontend (tests + coverage + build)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -62,11 +70,23 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Test
-        run: npm test
+      # Runs the whole suite once, with coverage.
+      - name: Test with coverage
+        run: npm run coverage
 
       - name: Build
         run: npm run build
+
+      - name: Test the coverage-badge script
+        working-directory: .
+        run: node --test .github/scripts/coverage-badges.test.mjs
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          retention-days: 14
 
   # Proves both Docker images still build. Nothing is pushed anywhere.
   docker:
@@ -79,3 +99,41 @@ jobs:
 
       - name: Build images
         run: docker compose build
+
+  # Turns both coverage reports into badge data and publishes it to the "badges" branch, where the
+  # README's badges read it. Only on pushes to the default branch, never for pull requests.
+  badges:
+    name: Publish coverage badges
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-coverage'
+          path: coverage
+
+      - name: Build badge data
+        run: >
+          node .github/scripts/coverage-badges.mjs
+          coverage/backend-coverage/jacoco.csv
+          coverage/frontend-coverage/coverage-summary.json
+          badges-out
+
+      # An orphan branch holding only the two JSON files, replaced on every run.
+      - name: Publish to the badges branch
+        working-directory: badges-out
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init -q -b badges
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "Update coverage badges for ${GITHUB_SHA}"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" badges

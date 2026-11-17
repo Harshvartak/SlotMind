@@ -5,11 +5,12 @@ cancelled, SlotMind finds the affected appointments, proposes new slots (rule-ba
 queues each proposal for front-desk approval. Nothing changes until a person confirms it with the
 patient.
 
+[![CI](https://github.com/Harshvartak/SlotMind/actions/workflows/ci.yml/badge.svg)](https://github.com/Harshvartak/SlotMind/actions/workflows/ci.yml)
+![Backend coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FHarshvartak%2FSlotMind%2Fbadges%2Fbackend-coverage.json)
+![Frontend coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FHarshvartak%2FSlotMind%2Fbadges%2Ffrontend-coverage.json)
 ![Java 17](https://img.shields.io/badge/Java-17-orange)
 ![Spring Boot 3.3](https://img.shields.io/badge/Spring%20Boot-3.3-6db33f)
 ![React 18](https://img.shields.io/badge/React-18-61dafb)
-![Backend tests](https://img.shields.io/badge/backend%20tests-107-brightgreen)
-![Frontend tests](https://img.shields.io/badge/frontend%20tests-65-brightgreen)
 
 <p align="center">
   <img src="assets/ui-suggestions.png" alt="SlotMind front-desk console showing two suggestions after a provider went offline" width="900">
@@ -259,12 +260,29 @@ every pull request, and on demand from the Actions tab:
 
 | Job | What it runs |
 |---|---|
-| **Backend** | JDK 17: `mvn verify`, which checks formatting with Spotless and then runs all 107 tests |
-| **Frontend** | Node 20: `npm ci`, `npm test` (65 tests), `npm run build` |
+| **Backend** | JDK 17: `mvn verify`, which checks formatting with Spotless, runs all 107 tests, and records JaCoCo coverage |
+| **Frontend** | Node 20: `npm ci`, `npm run coverage` (65 tests with coverage), `npm run build` |
 | **Docker images build** | `docker compose build`, after the two jobs above pass. Nothing is pushed. |
+| **Publish coverage badges** | On pushes to the default branch only: turns both coverage reports into badge data on a `badges` branch |
 
-A newer push to the same branch cancels the run it replaces, and failed backend runs upload the test
-reports as an artifact. There is no deploy step: this is continuous integration only.
+A newer push to the same branch cancels the run it replaces. Both coverage reports are kept as
+downloadable artifacts for 14 days, and failed backend runs also upload the test reports. There is
+no deploy step: this is continuous integration only.
+
+### Coverage
+
+The two coverage badges at the top read line coverage from the `badges` branch, which the workflow
+refreshes after every push to the default branch. They show as "invalid" until the first run has
+finished. To see the full reports locally:
+
+```bash
+cd backend  && mvn verify          # open backend/target/site/jacoco/index.html
+cd frontend && npm run coverage    # open frontend/coverage/index.html
+```
+
+Backend coverage is measured with JaCoCo and leaves out Lombok-generated code (see
+`backend/lombok.config`), so the figure reflects hand-written code. The frontend uses Vitest's V8
+coverage over `src/`, excluding the tests and the entry file.
 
 The backend suite covers the state machines, both strategies, the AI validation and fallback paths,
 the gateways (against local stub servers), every endpoint, the concurrent double-accept race, and

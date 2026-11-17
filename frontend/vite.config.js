@@ -16,5 +16,12 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
+    coverage: {
+      provider: 'v8',
+      // json-summary feeds the README badge; text-summary is the readable console output.
+      reporter: ['text-summary', 'json-summary', 'html'],
+      include: ['src/**/*.{js,jsx}'],
+      exclude: ['src/**/*.test.{js,jsx}', 'src/test/**', 'src/main.jsx'],
+    },
   },
 });
