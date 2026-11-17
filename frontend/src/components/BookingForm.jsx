@@ -77,11 +77,11 @@ export default function BookingForm({ providers, slots, onBook }) {
           ))}
         </select>
       </label>
-      {error && <p className="error">{error}</p>}
-      {booked && <p className="success">Appointment booked.</p>}
       <button type="submit" disabled={!complete || busy}>
         {busy ? 'Booking…' : 'Book appointment'}
       </button>
+      {error && <p className="error">{error}</p>}
+      {booked && <p className="success">Appointment booked.</p>}
     </form>
   );
 }

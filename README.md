@@ -156,7 +156,7 @@ mvn verify           # formatter check, then 107 tests
 
 ```bash
 cd frontend
-npm test             # Vitest + Testing Library, 57 tests, no backend needed
+npm test             # Vitest + Testing Library, 65 tests, no backend needed
 ```
 
 Code rules for contributors are in [.claude/CLAUDE.md](.claude/CLAUDE.md).

@@ -36,6 +36,19 @@ describe('AppointmentsTable', () => {
     expect(within(row).getByText('CONFIRMED')).toBeInTheDocument();
   });
 
+  it('uses a short label for appointments awaiting a decision', () => {
+    render(
+      <AppointmentsTable
+        onSuggest={vi.fn()}
+        appointments={[appointment({ status: 'RESCHEDULE_PENDING' })]}
+      />,
+    );
+
+    const row = screen.getByText('Maria Garcia').closest('tr');
+    expect(within(row).getByText('Pending')).toBeInTheDocument();
+    expect(within(row).queryByText('RESCHEDULE PENDING')).not.toBeInTheDocument();
+  });
+
   it('says so when there are no appointments', () => {
     render(<AppointmentsTable onSuggest={vi.fn()} appointments={[]} />);
 
@@ -81,12 +94,24 @@ describe('SlotList', () => {
     expect(items[1]).toHaveTextContent('Dr. David Kim');
   });
 
+  it('notes when an open slot belongs to a provider who is offline', () => {
+    render(
+      <SlotList
+        slots={[slot({ id: 'SLT-9', providerId: 'PRV-003', status: 'OPEN' })]}
+        providers={[provider({ id: 'PRV-003', name: 'Dr. Priya Sharma', status: 'OFFLINE' })]}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('listitem')).toHaveTextContent('· offline');
+  });
+
   it('cancels a slot by id', async () => {
     const user = userEvent.setup();
     const onCancel = vi.fn();
     render(<SlotList slots={[early]} providers={[provider()]} onCancel={onCancel} />);
 
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel slot' }));
 
     expect(onCancel).toHaveBeenCalledWith('SLT-001');
   });
@@ -100,6 +125,6 @@ describe('SlotList', () => {
       />,
     );
 
-    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel slot' })).not.toBeInTheDocument();
   });
 });

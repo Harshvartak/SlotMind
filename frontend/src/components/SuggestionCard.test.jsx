@@ -75,6 +75,30 @@ describe('SuggestionCard', () => {
     expect(accept).toBeEnabled();
   });
 
+  it('tells the user why Accept is disabled, until they tick the box', async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    expect(screen.getByText('Tick the box to enable Accept')).toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox'));
+
+    expect(screen.queryByText('Tick the box to enable Accept')).not.toBeInTheDocument();
+  });
+
+  it('colours the confidence bar by strength', () => {
+    const { container } = render(
+      <SuggestionCard
+        appointment={appointment()}
+        suggestion={suggestion({ confidence: 0.75 })}
+        slots={[slot()]}
+        providers={[provider(), doctorKim]}
+        onDecide={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector('.fill')).toHaveClass('tone-mid');
+  });
+
   it('accepts the suggestion after the confirmation', async () => {
     const user = userEvent.setup();
     const { onDecide } = renderCard();

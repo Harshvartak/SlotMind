@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Badge from './Badge.jsx';
-import { fmtTime, pct, TRIGGER_LABEL } from '../format.js';
+import { confidenceTone, fmtTime, pct, TRIGGER_LABEL } from '../format.js';
 
 /** One appointment waiting for the front desk, with its suggested new slot. */
 export default function SuggestionCard({ appointment, suggestion, slots, providers, onDecide }) {
@@ -29,7 +29,7 @@ export default function SuggestionCard({ appointment, suggestion, slots, provide
         <div>
           <h3>{appointment.patientName}</h3>
           <p className="muted">
-            Was {fmtTime(appointment.slot.startTime)} with {appointment.provider.name}
+            Booked: {fmtTime(appointment.slot.startTime)} with {appointment.provider.name}
           </p>
         </div>
         <Badge value={appointment.type} />
@@ -53,7 +53,10 @@ export default function SuggestionCard({ appointment, suggestion, slots, provide
             </p>
             <div className="confidence" title={`Confidence ${pct(suggestion.confidence)}`}>
               <div className="bar">
-                <div className="fill" style={{ width: pct(suggestion.confidence) }} />
+                <div
+                  className={`fill tone-${confidenceTone(suggestion.confidence)}`}
+                  style={{ width: pct(suggestion.confidence) }}
+                />
               </div>
               <span>{pct(suggestion.confidence)} confidence</span>
             </div>
@@ -69,13 +72,14 @@ export default function SuggestionCard({ appointment, suggestion, slots, provide
             I confirmed this new time with the patient
           </label>
           {error && <p className="error">{error}</p>}
-          <div className="row">
+          <div className="row actions">
             <button disabled={!confirmed || busy} onClick={() => decide('ACCEPTED')}>
               {busy ? 'Working…' : 'Accept'}
             </button>
             <button className="secondary" disabled={busy} onClick={() => decide('REJECTED')}>
               Reject
             </button>
+            {!confirmed && <span className="hint">Tick the box to enable Accept</span>}
           </div>
         </>
       )}

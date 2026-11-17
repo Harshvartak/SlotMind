@@ -94,7 +94,7 @@ describe('App', () => {
     render(<App />);
     await screen.findByText('Provider offline');
 
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel slot' }));
 
     expect(api.setSlotStatus).toHaveBeenCalledWith('SLT-005', 'CANCELLED');
   });

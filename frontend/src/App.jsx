@@ -40,8 +40,17 @@ export default function App() {
   return (
     <div className="app">
       <header className="top">
-        <h1>SlotMind</h1>
-        <span className="live">Front desk · refreshes every 5s</span>
+        <div className="brand">
+          <span className="logo" aria-hidden="true" />
+          <div>
+            <h1>SlotMind</h1>
+            <p className="tagline">Front-desk rescheduling</p>
+          </div>
+        </div>
+        <span className="live">
+          <span className="pulse" aria-hidden="true" />
+          Live · refreshes every 5s
+        </span>
       </header>
 
       {(notice || loadError) && (
@@ -54,11 +63,15 @@ export default function App() {
       <main className="grid">
         <section>
           <h2>
-            Needs rescheduling <span className="count">{waiting.length}</span>
+            Needs rescheduling{' '}
+            <span className={`count ${waiting.length === 0 ? 'zero' : ''}`}>{waiting.length}</span>
           </h2>
           {appointments.loading && <p className="muted">Loading…</p>}
           {!appointments.loading && waiting.length === 0 && (
-            <p className="muted">Nothing waiting. Take a provider offline or cancel a slot to try it.</p>
+            <p className="empty">
+              All caught up. Nothing waiting: take a provider offline or cancel a slot to see the
+              suggestions appear.
+            </p>
           )}
           {waiting.map((a) => (
             <SuggestionCard

@@ -157,7 +157,7 @@ engine selecting it by name and passing it the full context, but no real room st
 
 - `mvn verify` runs Spotless (google-java-format) first, then 107 tests: unit tests, state-machine
   tests, MockMvc API tests, an end-to-end demo test over real HTTP, the concurrent double-accept
-  race, and a test that loads the brief's Addendum A seed script unmodified. The UI has 57 Vitest
+  race, and a test that loads the brief's Addendum A seed script unmodified. The UI has 65 Vitest
   tests (`npm test`).
 - The seed data in `data.sql` is the brief's Addendum A. Its only changes are `DATEADD` for the
   times (in H2, `NOW() + 60` means 60 days) and no `version` column (the schema defaults it to 0).
