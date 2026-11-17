@@ -252,6 +252,20 @@ cd frontend
 npm test             # Vitest + Testing Library, 65 tests, no backend needed
 ```
 
+### Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push to `main` or `master`, on
+every pull request, and on demand from the Actions tab:
+
+| Job | What it runs |
+|---|---|
+| **Backend** | JDK 17: `mvn verify`, which checks formatting with Spotless and then runs all 107 tests |
+| **Frontend** | Node 20: `npm ci`, `npm test` (65 tests), `npm run build` |
+| **Docker images build** | `docker compose build`, after the two jobs above pass. Nothing is pushed. |
+
+A newer push to the same branch cancels the run it replaces, and failed backend runs upload the test
+reports as an artifact. There is no deploy step: this is continuous integration only.
+
 The backend suite covers the state machines, both strategies, the AI validation and fallback paths,
 the gateways (against local stub servers), every endpoint, the concurrent double-accept race, and
 the whole demo over real HTTP. Code rules for contributors are in
@@ -264,6 +278,7 @@ assets/       Screenshots used in this README
 backend/      Spring Boot 3.3, Java 17, JPA, H2 (in memory)
 frontend/     Vite + React 18, served by nginx in the container
 docs/         Execution plan, exception-handling plan
+.github/      CI workflow
 ADR.md        Architecture decisions
 docker-compose.yml
 ```
