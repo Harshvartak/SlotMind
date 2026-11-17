@@ -47,7 +47,10 @@ public class RuleBasedStrategy implements SchedulingStrategy {
     return Stream.concat(sameProvider, sameSpecialty).limit(MAX_OPTIONS).toList();
   }
 
-  private List<Slot> openSlots(Appointment appt) {
+  /**
+   * Future OPEN slots of working providers, excluding the appointment's own slot, nearest first.
+   */
+  public List<Slot> openSlots(Appointment appt) {
     return slots
         .findByStatusAndStartTimeAfterOrderByStartTimeAsc(SlotStatus.OPEN, LocalDateTime.now())
         .stream()
