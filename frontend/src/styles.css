@@ -68,6 +68,16 @@ blockquote { margin: 0.5rem 0 0; padding-left: 0.7rem; border-left: 3px solid va
 .fill { height: 100%; background: var(--good); }
 .check { display: flex; gap: 0.5rem; align-items: center; margin: 0.8rem 0 0.6rem; cursor: pointer; }
 .error { color: var(--bad); margin: 0.3rem 0; }
+.success { color: var(--good); margin: 0.3rem 0; }
+
+.booking { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.8rem 1rem; align-items: end; }
+.booking label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; color: var(--muted); }
+.booking input, .booking select {
+  font: inherit; color: var(--text); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; padding: 0.4rem 0.5rem;
+}
+.booking .error, .booking .success, .booking button { grid-column: 1 / -1; }
+.booking button { justify-self: start; }
 
 button {
   font: inherit; cursor: pointer; border: 1px solid var(--accent); background: var(--accent);

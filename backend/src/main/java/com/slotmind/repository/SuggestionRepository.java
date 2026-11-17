@@ -10,6 +10,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SuggestionRepository extends JpaRepository<RescheduleSuggestion, String> {
   List<RescheduleSuggestion> findByStatus(SuggestionStatus status);
 
+  List<RescheduleSuggestion> findByAppointmentIdAndStatus(
+      String appointmentId, SuggestionStatus status);
+
   Optional<RescheduleSuggestion> findFirstByAppointmentIdAndTriggerReasonAndStatus(
       String appointmentId, TriggerReason reason, SuggestionStatus status);
 }

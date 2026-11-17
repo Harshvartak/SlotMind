@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 
 class ProviderSlotApiTest extends ApiTestSupport {
   private static final String INVALID_STATUS_BODY = "{\"status\":\"ON_HOLIDAY\"}";
+  private static final String BOOKED_BODY = "{\"status\":\"BOOKED\"}";
+  private static final String OPEN_BODY = "{\"status\":\"OPEN\"}";
 
   @Test
   void listsSeededProvidersAndSlots() throws Exception {
@@ -35,15 +37,39 @@ class ProviderSlotApiTest extends ApiTestSupport {
 
   @Test
   void slotStatusCanBeCancelled() throws Exception {
-    patchJson("/slots/SLT-004/status", "{\"status\":\"CANCELLED\"}")
+    patchJson("/slots/SLT-004/status", CANCEL_BODY)
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("CANCELLED"));
   }
 
   @Test
+  void cancellingAnAlreadyCancelledSlotIsHarmless() throws Exception {
+    patchJson("/slots/SLT-004/status", CANCEL_BODY).andExpect(status().isOk());
+
+    patchJson("/slots/SLT-004/status", CANCEL_BODY).andExpect(status().isOk());
+  }
+
+  @Test
+  void aCancelledSlotCannotBeBookedDirectly() throws Exception {
+    patchJson("/slots/SLT-004/status", CANCEL_BODY).andExpect(status().isOk());
+
+    patchJson("/slots/SLT-004/status", BOOKED_BODY)
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.detail").value("Slot SLT-004 cannot go from CANCELLED to BOOKED"));
+  }
+
+  @Test
+  void aCancelledSlotCanBeReopened() throws Exception {
+    patchJson("/slots/SLT-004/status", CANCEL_BODY).andExpect(status().isOk());
+
+    patchJson("/slots/SLT-004/status", OPEN_BODY)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("OPEN"));
+  }
+
+  @Test
   void unknownSlotIsNotFound() throws Exception {
-    patchJson("/slots/SLT-999/status", "{\"status\":\"CANCELLED\"}")
-        .andExpect(status().isNotFound());
+    patchJson("/slots/SLT-999/status", CANCEL_BODY).andExpect(status().isNotFound());
   }
 
   @Test

@@ -24,7 +24,7 @@ class AppointmentApiTest extends ApiTestSupport {
 
   @Test
   void bookingAnAlreadyBookedSlotIsRejected() throws Exception {
-    postJson("/appointments", bookingJson("Ana Lopez", SPECIALIST, "SLT-003"))
+    postJson("/appointments", bookingJson("Ana Lopez", "PRV-003", "SLT-003"))
         .andExpect(status().isConflict());
   }
 
@@ -65,9 +65,11 @@ class AppointmentApiTest extends ApiTestSupport {
 
   @Test
   void suggestKeepsTheSameProviderWhenTheyHaveAnotherOpenSlot() throws Exception {
-    postJson("/appointments/APT-003/suggest", "")
+    addOpenSlot("SLT-X1", "PRV-001", 300);
+
+    postJson("/appointments/APT-001/suggest", "")
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.recommendedSlotId").value(OPEN_SPECIALIST_SLOT))
+        .andExpect(jsonPath("$.recommendedSlotId").value("SLT-X1"))
         .andExpect(jsonPath("$.alternateProviderId").value(nullValue()))
         .andExpect(jsonPath("$.triggerReason").value("INITIAL"))
         .andExpect(jsonPath("$.status").value("PENDING"))
@@ -86,8 +88,8 @@ class AppointmentApiTest extends ApiTestSupport {
 
   @Test
   void suggestTwiceReturnsTheSamePendingSuggestion() throws Exception {
-    String first = suggestFor("APT-003");
-    String second = suggestFor("APT-003");
+    String first = suggestFor("APT-004");
+    String second = suggestFor("APT-004");
 
     assertEquals(first, second);
   }
@@ -99,7 +101,7 @@ class AppointmentApiTest extends ApiTestSupport {
 
   @Test
   void suggestWithNoFittingSlotIsUnprocessable() throws Exception {
-    // APT-004 is pediatric and no other pediatric provider has an open slot
-    postJson("/appointments/APT-004/suggest", "").andExpect(status().isUnprocessableEntity());
+    // APT-003 is pediatric (PRV-003); the open slots belong to a specialist and a general doctor
+    postJson("/appointments/APT-003/suggest", "").andExpect(status().isUnprocessableEntity());
   }
 }

@@ -7,45 +7,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.slotmind.domain.Appointment;
 import com.slotmind.domain.Provider;
 import com.slotmind.domain.ProviderStatus;
-import com.slotmind.domain.Slot;
-import com.slotmind.domain.SlotStatus;
 import com.slotmind.domain.TriggerReason;
 import com.slotmind.engine.Recommendation;
 import com.slotmind.engine.RuleBasedStrategy;
 import com.slotmind.engine.SchedulingContext;
+import com.slotmind.engine.SchedulingContextFactory;
 import com.slotmind.repository.AppointmentRepository;
-import com.slotmind.repository.ProviderRepository;
-import com.slotmind.repository.SlotRepository;
-import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-/** Runs against the seeded data; each test rolls back. APT-001 is PRV-001 (GENERAL, SLT-001). */
+/**
+ * Runs against the brief's seed; each test rolls back. APT-001 is PRV-001 (general, SLT-001); the
+ * open slots are SLT-004 (PRV-002, specialist) and SLT-005 (PRV-004, general).
+ */
 class RuleBasedStrategyTest extends ApiTestSupport {
   private static final int MAX_OPTIONS = 3;
-  private static final int MINUTES_PER_SLOT = 30;
 
   @Autowired RuleBasedStrategy strategy;
-  @Autowired SlotRepository slots;
-  @Autowired ProviderRepository providers;
+  @Autowired SchedulingContextFactory contexts;
   @Autowired AppointmentRepository appointments;
 
-  private void addOpenSlot(String id, String providerId, long minutesFromNow) {
-    Provider provider = providers.findById(providerId).orElseThrow();
-    slots.save(
-        Slot.builder()
-            .id(id)
-            .provider(provider)
-            .startTime(LocalDateTime.now().plusMinutes(minutesFromNow))
-            .durationMinutes(MINUTES_PER_SLOT)
-            .status(SlotStatus.OPEN)
-            .build());
+  private SchedulingContext contextFor(String appointmentId) {
+    Appointment appt = appointments.findById(appointmentId).orElseThrow();
+    return contexts.create(appt, TriggerReason.INITIAL);
   }
 
   private List<Recommendation> recommendFor(String appointmentId) {
-    Appointment appt = appointments.findById(appointmentId).orElseThrow();
-    return strategy.recommend(new SchedulingContext(appt, TriggerReason.INITIAL));
+    return strategy.recommend(contextFor(appointmentId));
   }
 
   @Test
@@ -64,12 +53,22 @@ class RuleBasedStrategyTest extends ApiTestSupport {
   void alternateProviderReasoningNamesBothDoctorsInPlainLanguage() {
     Recommendation r = recommendFor("APT-001").get(0);
 
-    assertTrue(r.reasoning().contains("Dr. Alice Chen"));
-    assertTrue(r.reasoning().contains("Dr. David Kim"));
+    assertTrue(r.reasoning().contains("Dr. Sarah Chen"));
+    assertTrue(r.reasoning().contains("Dr. Rahul Verma"));
   }
 
   @Test
-  void pastSlotsAreNeverRecommended() {
+  void onlyOffersSlotsFromTheContextItIsGiven() {
+    SchedulingContext full = contextFor("APT-001");
+    SchedulingContext none =
+        new SchedulingContext(full.appointment(), full.trigger(), List.of(), full.providers());
+
+    assertTrue(strategy.recommend(none).isEmpty());
+    assertFalse(strategy.recommend(full).isEmpty());
+  }
+
+  @Test
+  void pastSlotsAreNeverInTheContextSoNeverRecommended() {
     addOpenSlot("SLT-PAST", "PRV-001", -60);
 
     List<Recommendation> r = recommendFor("APT-001");
@@ -78,12 +77,12 @@ class RuleBasedStrategyTest extends ApiTestSupport {
   }
 
   @Test
-  void slotsOfOfflineProvidersAreSkipped() {
-    Provider other = providers.findById("PRV-004").orElseThrow();
+  void slotsOfOfflineProvidersAreNeverInTheContextSoNeverRecommended() {
+    Provider other = providerRepository.findById("PRV-004").orElseThrow();
     other.setStatus(ProviderStatus.OFFLINE);
-    providers.save(other);
+    providerRepository.save(other);
 
-    assertTrue(recommendFor("APT-001").isEmpty());
+    assertTrue(recommendFor("APT-001").isEmpty()); // SLT-004 is a specialist's, not a match
   }
 
   @Test

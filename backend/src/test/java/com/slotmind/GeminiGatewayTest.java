@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,7 +62,7 @@ class GeminiGatewayTest {
   private GeminiGateway gateway(String key, String model) {
     String url = "http://127.0.0.1:" + server.getAddress().getPort();
     return new GeminiGateway(
-        new LlmProperties("gemini", model, url, key, TIMEOUT_MS), new ObjectMapper());
+        new LlmProperties("gemini", model, url, key, TIMEOUT_MS, Map.of()), new ObjectMapper());
   }
 
   @Test

@@ -17,3 +17,5 @@ export const TRIGGER_LABEL = {
 };
 
 export const PROVIDER_STATUSES = ['AVAILABLE', 'BUSY', 'OFFLINE'];
+
+export const APPOINTMENT_TYPES = ['ROUTINE', 'URGENT', 'FOLLOW_UP'];

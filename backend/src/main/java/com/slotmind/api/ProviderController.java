@@ -1,10 +1,8 @@
 package com.slotmind.api;
 
 import com.slotmind.api.Views.ProviderView;
-import com.slotmind.domain.Provider;
 import com.slotmind.domain.ProviderStatus;
-import com.slotmind.repository.ProviderRepository;
-import com.slotmind.service.Errors;
+import com.slotmind.service.CatalogService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
@@ -20,19 +18,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/providers")
 @RequiredArgsConstructor
 public class ProviderController {
-  private final ProviderRepository providers;
+  private final CatalogService catalog;
 
   public record StatusRequest(@NotNull ProviderStatus status) {}
 
   @GetMapping
   public List<ProviderView> list() {
-    return providers.findAll().stream().map(ProviderView::of).toList();
+    return catalog.providers().stream().map(ProviderView::of).toList();
   }
 
+  /**
+   * OFFLINE returns immediately; suggestions for the affected appointments follow asynchronously.
+   */
   @PatchMapping("/{id}/status")
   public ProviderView setStatus(@PathVariable String id, @Valid @RequestBody StatusRequest r) {
-    Provider p = providers.findById(id).orElseThrow(() -> Errors.notFound("Provider", id));
-    p.setStatus(r.status());
-    return ProviderView.of(providers.save(p)); // agentic loop hooks in here in Phase 4
+    return ProviderView.of(catalog.setProviderStatus(id, r.status()));
   }
 }

@@ -20,13 +20,19 @@ slotmind:
   scheduling:
     strategy: ${SCHEDULING_STRATEGY:rule}   # rule | ai
   llm:
-    provider: ${LLM_PROVIDER:mock}          # mock | gemini | groq | ollama
-    model: ${LLM_MODEL:}
+    provider: ${LLM_PROVIDER:mock}          # mock | gemini | openai_compatible
+    model: ${LLM_MODEL:}                    # the provider's model id
+    headers:                                # extra HTTP headers sent on every call
+      product: ${LLM_PRODUCT:}              # required by some gateways; blank values are not sent
     base-url: ${LLM_BASE_URL:}
     api-key: ${LLM_API_KEY:}                # never commit a key
     timeout-ms: ${LLM_TIMEOUT_MS:8000}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+server:
+  error:
+    include-message: always   # the UI shows the reason behind a 409, e.g. "slot is no longer open"
 
 management:
   endpoints:

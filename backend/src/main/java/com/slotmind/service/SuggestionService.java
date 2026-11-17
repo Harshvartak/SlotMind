@@ -9,7 +9,6 @@ import com.slotmind.domain.SlotStatus;
 import com.slotmind.domain.SuggestionStatus;
 import com.slotmind.domain.TriggerReason;
 import com.slotmind.engine.Recommendation;
-import com.slotmind.engine.SchedulingContext;
 import com.slotmind.engine.SchedulingEngine;
 import com.slotmind.repository.AppointmentRepository;
 import com.slotmind.repository.SlotRepository;
@@ -45,11 +44,10 @@ public class SuggestionService {
     if (existing.isPresent()) {
       return existing;
     }
-    if (appt.getStatus() != AppointmentStatus.CONFIRMED
-        && appt.getStatus() != AppointmentStatus.RESCHEDULE_PENDING) {
+    if (!AppointmentStatus.ACTIVE.contains(appt.getStatus())) {
       throw Errors.conflict("Appointment is " + appt.getStatus());
     }
-    return engine.recommend(new SchedulingContext(appt, trigger)).stream()
+    return engine.recommend(appt, trigger).stream()
         .findFirst()
         .map(best -> create(appt, trigger, best));
   }
@@ -74,16 +72,17 @@ public class SuggestionService {
     }
     if (decision == SuggestionStatus.ACCEPTED) {
       accept(s);
+      supersedeOthers(s);
     } else {
       reject(s);
     }
-    s.setStatus(decision);
+    s.moveTo(decision);
     return suggestions.save(s);
   }
 
   private RescheduleSuggestion create(
       Appointment appt, TriggerReason trigger, Recommendation best) {
-    appt.setStatus(AppointmentStatus.RESCHEDULE_PENDING);
+    appt.moveTo(AppointmentStatus.RESCHEDULE_PENDING);
     appointments.save(appt);
     RescheduleSuggestion s =
         RescheduleSuggestion.builder()
@@ -100,10 +99,28 @@ public class SuggestionService {
     return suggestions.save(s);
   }
 
+  /** Back to CONFIRMED only when no other suggestion for the appointment is still waiting. */
   private void reject(RescheduleSuggestion s) {
-    Appointment appt = s.getAppointment();
-    appt.setStatus(AppointmentStatus.CONFIRMED);
-    appointments.save(appt);
+    if (otherPending(s).isEmpty()) {
+      Appointment appt = s.getAppointment();
+      appt.moveTo(AppointmentStatus.CONFIRMED);
+      appointments.save(appt);
+    }
+  }
+
+  /** The appointment has moved, so its other pending suggestions (manual vs event) are void. */
+  private void supersedeOthers(RescheduleSuggestion accepted) {
+    List<RescheduleSuggestion> others = otherPending(accepted);
+    others.forEach(o -> o.moveTo(SuggestionStatus.REJECTED));
+    suggestions.saveAll(others);
+  }
+
+  private List<RescheduleSuggestion> otherPending(RescheduleSuggestion s) {
+    return suggestions
+        .findByAppointmentIdAndStatus(s.getAppointment().getId(), SuggestionStatus.PENDING)
+        .stream()
+        .filter(o -> !o.getId().equals(s.getId()))
+        .toList();
   }
 
   /**
@@ -125,15 +142,15 @@ public class SuggestionService {
     }
     Slot old = appt.getSlot();
     if (old.getStatus() == SlotStatus.BOOKED) {
-      old.setStatus(SlotStatus.OPEN); // a CANCELLED slot stays cancelled
+      old.moveTo(SlotStatus.OPEN); // a CANCELLED slot stays cancelled
     }
-    target.setStatus(SlotStatus.BOOKED);
+    target.moveTo(SlotStatus.BOOKED);
     slots.saveAndFlush(target); // throws on a concurrent version change
     slots.save(old);
 
     appt.setSlot(target);
     appt.setProvider(target.getProvider());
-    appt.setStatus(AppointmentStatus.RESCHEDULED);
+    appt.moveTo(AppointmentStatus.RESCHEDULED);
     appointments.save(appt);
   }
 }

@@ -28,6 +28,11 @@ export const api = {
   listSuggestions: (status) => request(`/suggestions${status ? `?status=${status}` : ''}`),
   listProviders: () => request('/providers'),
   listSlots: () => request('/slots'),
+  bookAppointment: ({ patientName, type, providerId, slotId }) =>
+    request('/appointments', {
+      method: 'POST',
+      body: JSON.stringify({ patientName, type, providerId, slotId }),
+    }),
   suggest: (appointmentId) => request(`/appointments/${appointmentId}/suggest`, { method: 'POST' }),
   decideSuggestion: (id, status) => patch(`/suggestions/${id}`, status),
   setProviderStatus: (id, status) => patch(`/providers/${id}/status`, status),

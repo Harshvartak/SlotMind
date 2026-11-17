@@ -29,7 +29,7 @@ export default function AppointmentsTable({ appointments, onSuggest }) {
                 <Badge value={a.status} />
               </td>
               <td>
-                {a.status === 'CONFIRMED' && (
+                {(a.status === 'CONFIRMED' || a.status === 'RESCHEDULED') && (
                   <button className="link" onClick={() => onSuggest(a.id)}>
                     Suggest new time
                   </button>

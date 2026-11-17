@@ -1,7 +1,6 @@
 package com.slotmind.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.Optional;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -10,13 +9,16 @@ import org.springframework.context.annotation.Configuration;
 public class LlmConfig {
   @Bean
   public LlmGateway llmGateway(LlmProperties props, ObjectMapper mapper) {
-    String provider = Optional.ofNullable(props.provider()).orElse(MockGateway.NAME);
+    String provider = props.provider().isEmpty() ? MockGateway.NAME : props.provider();
     return switch (provider) {
       case MockGateway.NAME -> new MockGateway();
       case GeminiGateway.NAME -> new GeminiGateway(props, mapper);
+      case OpenAiCompatibleGateway.NAME, OpenAiCompatibleGateway.ALIAS ->
+          new OpenAiCompatibleGateway(props, mapper);
       default ->
           throw new IllegalStateException(
-              "Unknown slotmind.llm.provider '%s'; use mock or gemini".formatted(provider));
+              "Unknown slotmind.llm.provider '%s'; use mock, gemini or openai_compatible"
+                  .formatted(provider));
     };
   }
 }

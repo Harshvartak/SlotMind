@@ -12,12 +12,12 @@ import com.slotmind.domain.SlotStatus;
 import com.slotmind.domain.SuggestionStatus;
 import com.slotmind.domain.TriggerReason;
 import com.slotmind.engine.Recommendation;
-import com.slotmind.engine.SchedulingContext;
 import com.slotmind.engine.SchedulingEngine;
 import com.slotmind.repository.AppointmentRepository;
 import com.slotmind.repository.ProviderRepository;
 import com.slotmind.repository.SlotRepository;
 import com.slotmind.service.SuggestionService;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
@@ -33,11 +33,13 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.web.server.ResponseStatusException;
 
+/** Not transactional (commits are real), so the double-accept race is a real race. */
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:${random.uuid}")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class SchedulingFlowTest {
   private static final String OFFLINE_PROVIDER = "PRV-001";
   private static final String SHARED_OPEN_SLOT = "SLT-005";
+  private static final int SLOT_MINUTES = 30;
 
   @Autowired SchedulingEngine engine;
   @Autowired SuggestionService suggestions;
@@ -57,15 +59,22 @@ class SchedulingFlowTest {
 
   @Test
   void ruleStrategyPrefersSameProviderWhenSlotCancelled() {
-    Slot s = slots.findById("SLT-003").orElseThrow();
-    s.setStatus(SlotStatus.CANCELLED);
-    slots.save(s);
-    Appointment apt = appointments.findById("APT-003").orElseThrow();
+    slots.save(
+        Slot.builder()
+            .id("SLT-X1")
+            .provider(providers.findById("PRV-001").orElseThrow())
+            .startTime(LocalDateTime.now().plusMinutes(300))
+            .durationMinutes(SLOT_MINUTES)
+            .status(SlotStatus.OPEN)
+            .build());
+    Slot cancelled = slots.findById("SLT-001").orElseThrow();
+    cancelled.moveTo(SlotStatus.CANCELLED);
+    slots.save(cancelled);
+    Appointment apt = appointments.findById("APT-001").orElseThrow();
 
-    List<Recommendation> r =
-        engine.recommend(new SchedulingContext(apt, TriggerReason.SLOT_CANCELLED));
+    List<Recommendation> r = engine.recommend(apt, TriggerReason.SLOT_CANCELLED);
 
-    assertEquals("SLT-004", r.get(0).slotId());
+    assertEquals("SLT-X1", r.get(0).slotId());
     assertEquals(Optional.empty(), r.get(0).alternateProviderId());
   }
 
@@ -74,8 +83,7 @@ class SchedulingFlowTest {
     setOffline(OFFLINE_PROVIDER);
     Appointment apt = appointments.findById("APT-001").orElseThrow();
 
-    List<Recommendation> r =
-        engine.recommend(new SchedulingContext(apt, TriggerReason.PROVIDER_OFFLINE));
+    List<Recommendation> r = engine.recommend(apt, TriggerReason.PROVIDER_OFFLINE);
 
     assertEquals(SHARED_OPEN_SLOT, r.get(0).slotId());
     assertEquals(Optional.of("PRV-004"), r.get(0).alternateProviderId());

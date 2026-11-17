@@ -40,7 +40,9 @@ public class RescheduleSuggestion {
   @Column(length = 1000)
   private String reasoning;
 
+  /** Changed only through {@link #moveTo}: PENDING to ACCEPTED or REJECTED, then final. */
   @Enumerated(EnumType.STRING)
+  @Setter(AccessLevel.NONE)
   private SuggestionStatus status;
 
   @Enumerated(EnumType.STRING)
@@ -50,5 +52,12 @@ public class RescheduleSuggestion {
 
   public Optional<String> alternateProvider() {
     return Optional.ofNullable(alternateProviderId);
+  }
+
+  public void moveTo(SuggestionStatus next) {
+    if (!status.canTransitionTo(next)) {
+      throw new InvalidTransitionException("Suggestion " + id, status, next);
+    }
+    status = next;
   }
 }

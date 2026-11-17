@@ -29,7 +29,7 @@ public class AppointmentService {
         providers.findById(providerId).orElseThrow(() -> Errors.notFound("Provider", providerId));
     Slot slot = slots.findById(slotId).orElseThrow(() -> Errors.notFound("Slot", slotId));
     requireBookable(provider, slot);
-    slot.setStatus(SlotStatus.BOOKED);
+    slot.moveTo(SlotStatus.BOOKED);
     slots.saveAndFlush(slot); // @Version guards against a concurrent booking of the same slot
     return appointments.save(
         Appointment.builder()

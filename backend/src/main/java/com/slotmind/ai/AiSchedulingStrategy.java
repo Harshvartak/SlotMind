@@ -3,16 +3,11 @@ package com.slotmind.ai;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.slotmind.domain.Appointment;
-import com.slotmind.domain.ProviderStatus;
 import com.slotmind.domain.Slot;
-import com.slotmind.domain.SlotStatus;
 import com.slotmind.engine.Recommendation;
 import com.slotmind.engine.RuleBasedStrategy;
 import com.slotmind.engine.SchedulingContext;
 import com.slotmind.engine.SchedulingStrategy;
-import com.slotmind.repository.ProviderRepository;
-import com.slotmind.repository.SlotRepository;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -21,9 +16,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * Asks the model for the best slot, then validates the answer against the database. Any failure
- * (gateway, bad JSON, invalid or non-OPEN slot) falls back to the rule strategy, so a suggestion is
- * still produced.
+ * Asks the model for the best slot, then validates the answer against the context's available
+ * slots. Any failure (gateway, bad JSON, a slot that is not one of the open ones) falls back to the
+ * rule strategy, so a suggestion is still produced.
  */
 @Component("ai")
 @Slf4j
@@ -32,20 +27,11 @@ public class AiSchedulingStrategy implements SchedulingStrategy {
 
   private final LlmGateway gateway;
   private final RuleBasedStrategy rules;
-  private final SlotRepository slots;
-  private final ProviderRepository providers;
   private final ObjectMapper mapper;
 
-  public AiSchedulingStrategy(
-      LlmGateway gateway,
-      RuleBasedStrategy rules,
-      SlotRepository slots,
-      ProviderRepository providers,
-      ObjectMapper mapper) {
+  public AiSchedulingStrategy(LlmGateway gateway, RuleBasedStrategy rules, ObjectMapper mapper) {
     this.gateway = gateway;
     this.rules = rules;
-    this.slots = slots;
-    this.providers = providers;
     this.mapper = mapper;
   }
 
@@ -63,13 +49,13 @@ public class AiSchedulingStrategy implements SchedulingStrategy {
   }
 
   private Recommendation askModel(SchedulingContext ctx) {
-    Appointment appt = ctx.appointment();
-    List<Slot> candidates = rules.openSlots(appt);
-    if (candidates.isEmpty()) {
+    if (ctx.availableSlots().isEmpty()) {
       throw new AiException("no open slots to choose from");
     }
-    String prompt = PromptBuilder.build(appt, ctx.trigger(), candidates, providers.findAll());
-    return validate(parse(gateway.callLLM(prompt)), appt);
+    String prompt =
+        PromptBuilder.build(
+            ctx.appointment(), ctx.trigger(), ctx.availableSlots(), ctx.providers());
+    return validate(parse(gateway.callLLM(prompt)), ctx);
   }
 
   private LlmReply parse(String text) {
@@ -82,8 +68,8 @@ public class AiSchedulingStrategy implements SchedulingStrategy {
     }
   }
 
-  private Recommendation validate(LlmReply reply, Appointment appt) {
-    Slot slot = requireUsableSlot(reply.slotId());
+  private Recommendation validate(LlmReply reply, SchedulingContext ctx) {
+    Slot slot = requireAvailable(reply.slotId(), ctx.availableSlots());
     String owner = slot.getProvider().getId();
     Optional<String> claimed =
         Optional.ofNullable(reply.alternateProviderId()).filter(id -> !id.isBlank());
@@ -96,29 +82,25 @@ public class AiSchedulingStrategy implements SchedulingStrategy {
     if (reply.reasoning() == null || reply.reasoning().isBlank()) {
       throw new AiException("reasoning is empty");
     }
-    boolean sameProvider = owner.equals(appt.getProvider().getId());
     return new Recommendation(
         slot.getId(),
-        sameProvider ? Optional.empty() : Optional.of(owner),
+        sameProvider(ctx.appointment(), owner) ? Optional.empty() : Optional.of(owner),
         reply.confidence(),
         reply.reasoning().strip());
   }
 
-  private Slot requireUsableSlot(String slotId) {
+  /** The slot must be one of the open ones we offered: that proves it exists and is OPEN. */
+  private Slot requireAvailable(String slotId, List<Slot> available) {
     if (slotId == null || slotId.isBlank()) {
       throw new AiException("slotId is missing");
     }
-    Slot slot =
-        slots.findById(slotId).orElseThrow(() -> new AiException("unknown slotId " + slotId));
-    if (slot.getStatus() != SlotStatus.OPEN) {
-      throw new AiException("slot " + slotId + " is " + slot.getStatus());
-    }
-    if (!slot.getStartTime().isAfter(LocalDateTime.now())) {
-      throw new AiException("slot " + slotId + " is in the past");
-    }
-    if (slot.getProvider().getStatus() == ProviderStatus.OFFLINE) {
-      throw new AiException("slot " + slotId + " belongs to an offline provider");
-    }
-    return slot;
+    return available.stream()
+        .filter(s -> s.getId().equals(slotId))
+        .findFirst()
+        .orElseThrow(() -> new AiException("slotId " + slotId + " is not an available open slot"));
+  }
+
+  private static boolean sameProvider(Appointment appt, String providerId) {
+    return providerId.equals(appt.getProvider().getId());
   }
 }

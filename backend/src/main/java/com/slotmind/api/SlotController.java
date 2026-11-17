@@ -1,10 +1,8 @@
 package com.slotmind.api;
 
 import com.slotmind.api.Views.SlotView;
-import com.slotmind.domain.Slot;
 import com.slotmind.domain.SlotStatus;
-import com.slotmind.repository.SlotRepository;
-import com.slotmind.service.Errors;
+import com.slotmind.service.CatalogService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
@@ -20,19 +18,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/slots")
 @RequiredArgsConstructor
 public class SlotController {
-  private final SlotRepository slots;
+  private final CatalogService catalog;
 
   public record StatusRequest(@NotNull SlotStatus status) {}
 
   @GetMapping
   public List<SlotView> list() {
-    return slots.findAll().stream().map(SlotView::of).toList();
+    return catalog.slots().stream().map(SlotView::of).toList();
   }
 
+  /** CANCELLED returns immediately; the suggestion for the booked appointment follows async. */
   @PatchMapping("/{id}/status")
   public SlotView setStatus(@PathVariable String id, @Valid @RequestBody StatusRequest r) {
-    Slot s = slots.findById(id).orElseThrow(() -> Errors.notFound("Slot", id));
-    s.setStatus(r.status());
-    return SlotView.of(slots.save(s)); // agentic loop hooks in here in Phase 4
+    return SlotView.of(catalog.setSlotStatus(id, r.status()));
   }
 }

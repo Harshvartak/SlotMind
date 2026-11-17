@@ -1,12 +1,7 @@
 package com.slotmind.engine;
 
-import com.slotmind.domain.Appointment;
 import com.slotmind.domain.Provider;
-import com.slotmind.domain.ProviderStatus;
 import com.slotmind.domain.Slot;
-import com.slotmind.domain.SlotStatus;
-import com.slotmind.repository.SlotRepository;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Nearest OPEN slot with the same provider, then nearest OPEN slot with a provider of the same
- * specialty.
+ * specialty. Works only on the context it is given.
  */
 @Component(RuleBasedStrategy.NAME)
 public class RuleBasedStrategy implements SchedulingStrategy {
@@ -26,17 +21,10 @@ public class RuleBasedStrategy implements SchedulingStrategy {
   private static final DateTimeFormatter WHEN =
       DateTimeFormatter.ofPattern("EEEE d MMMM 'at' h:mm a");
 
-  private final SlotRepository slots;
-
-  public RuleBasedStrategy(SlotRepository slots) {
-    this.slots = slots;
-  }
-
   @Override
   public List<Recommendation> recommend(SchedulingContext ctx) {
-    Appointment appt = ctx.appointment();
-    Provider current = appt.getProvider();
-    List<Slot> open = openSlots(appt);
+    Provider current = ctx.appointment().getProvider();
+    List<Slot> open = ctx.availableSlots();
     Stream<Recommendation> sameProvider =
         open.stream().filter(s -> isProvider(s, current)).map(s -> keep(s, current));
     Stream<Recommendation> sameSpecialty =
@@ -45,18 +33,6 @@ public class RuleBasedStrategy implements SchedulingStrategy {
             .filter(s -> s.getProvider().getSpecialty() == current.getSpecialty())
             .map(s -> switchTo(s, current));
     return Stream.concat(sameProvider, sameSpecialty).limit(MAX_OPTIONS).toList();
-  }
-
-  /**
-   * Future OPEN slots of working providers, excluding the appointment's own slot, nearest first.
-   */
-  public List<Slot> openSlots(Appointment appt) {
-    return slots
-        .findByStatusAndStartTimeAfterOrderByStartTimeAsc(SlotStatus.OPEN, LocalDateTime.now())
-        .stream()
-        .filter(s -> !s.getId().equals(appt.getSlot().getId()))
-        .filter(s -> s.getProvider().getStatus() != ProviderStatus.OFFLINE)
-        .toList();
   }
 
   private static boolean isProvider(Slot slot, Provider provider) {

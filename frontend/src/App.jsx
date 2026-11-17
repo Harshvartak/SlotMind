@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from './api/client.js';
 import { usePolling } from './hooks/usePolling.js';
 import AppointmentsTable from './components/AppointmentsTable.jsx';
+import BookingForm from './components/BookingForm.jsx';
 import ProviderList from './components/ProviderList.jsx';
 import SlotList from './components/SlotList.jsx';
 import SuggestionCard from './components/SuggestionCard.jsx';
@@ -72,6 +73,16 @@ export default function App() {
               }}
             />
           ))}
+
+          <h2>Book an appointment</h2>
+          <BookingForm
+            providers={providers.data}
+            slots={slots.data}
+            onBook={async (booking) => {
+              await api.bookAppointment(booking);
+              refreshAll();
+            }}
+          />
 
           <h2>Appointments</h2>
           <AppointmentsTable
