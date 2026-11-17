@@ -1,0 +1,56 @@
+# Default: backend (H2 in-memory) + frontend. Demo needs no keys or network.
+#   docker compose up --build              -> UI http://localhost:3000, API http://localhost:8080
+# Optional profiles:
+#   docker compose --profile postgres up   -> backend on Postgres instead of H2
+#   docker compose --profile ollama up     -> local LLM (set LLM_PROVIDER=ollama)
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SCHEDULING_STRATEGY: ${SCHEDULING_STRATEGY:-rule}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      CORS_ORIGINS: http://localhost:3000
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_DB: slotmind
+      POSTGRES_USER: slotmind
+      POSTGRES_PASSWORD: slotmind
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+  pgdata:
+  ollama:

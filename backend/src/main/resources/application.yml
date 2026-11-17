@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: slotmind
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:slotmind;DB_CLOSE_DELAY=-1}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:create-drop}
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
+  h2:
+    console:
+      enabled: true
+
+slotmind:
+  scheduling:
+    strategy: ${SCHEDULING_STRATEGY:rule}   # rule | ai
+  llm:
+    provider: ${LLM_PROVIDER:mock}          # mock | gemini | groq | ollama
+    model: ${LLM_MODEL:}
+    base-url: ${LLM_BASE_URL:}
+    api-key: ${LLM_API_KEY:}                # never commit a key
+    timeout-ms: ${LLM_TIMEOUT_MS:8000}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

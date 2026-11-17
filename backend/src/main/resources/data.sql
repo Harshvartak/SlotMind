@@ -1,0 +1,3 @@
+-- Seed data (commit 4). NOTE: use DATEADD, not NOW() + n (that adds days in H2).
+-- TODO: providers PRV-001..005, slots SLT-001..006 (OPEN: SLT-004/PRV-002, SLT-005/PRV-004), appointments APT-001..004.
+-- Example slot time: DATEADD('MINUTE', 60, CURRENT_TIMESTAMP)
